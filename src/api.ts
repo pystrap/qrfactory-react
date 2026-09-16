@@ -1,6 +1,6 @@
 import type { AuthResult } from './types'
 
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://qrfactorycore.cweb.app/api').replace(/\/$/, '')
 // Session-scoped so signing out/closing the browser clears tokens and sensitive drafts.
 const sessionKey = 'qrfactory.session'
 export function getSession(): AuthResult | null {
