@@ -1,0 +1,157 @@
+/* Accessible foregrounds retain the soft surfaces without sacrificing legibility. */
+:root {
+  --muted: #6e6475;
+}
+.hero-meta,
+.generator-topline,
+.generator-fineprint,
+.eyebrow,
+.style-details summary small,
+.style-options > small,
+.color-presets > span,
+.optional,
+.preview-top,
+.preview-status,
+.paper-caption,
+.preview-panel > p,
+.download-caption,
+.preview-bottom,
+.retain-card .retain-login,
+.possibility-card .eyebrow,
+.possibility-card p,
+.mini-content span,
+.hand-note,
+.accordion-body,
+.site-footer > span,
+.auth-form .auth-note,
+.auth-story li,
+.upload-zone > span,
+.stat-card > span:last-child,
+.sidebar-label,
+.sidebar-note p,
+.sidebar-user small,
+.qr-destination,
+.qr-card-footer > span,
+.content-type,
+.code-badge,
+.pagination-bar,
+.details-preview > small,
+.analytics-panel > small,
+.storage-card h3 > span,
+.file-info p,
+.file-links,
+.project-card > a > span,
+.account-details > div > span,
+.shared-disclosure,
+.shared-footer,
+.dynamic-option > small {
+  color: #6c6075;
+}
+.step-label > span,
+.sidebar-note h6 {
+  color: #72558d;
+}
+.deco-right > span,
+.floating-note,
+.art-status {
+  color: #4c663a;
+}
+.step-number {
+  color: #8c799d;
+}
+.cta-footnote {
+  color: #b9a8c7;
+}
+.art-card.back {
+  color: #72538c;
+}
+.art-card small {
+  color: #6e5d7b;
+}
+.saved-card small {
+  color: #4c684e;
+}
+.hero-meta {
+  font-size: 11px;
+}
+.paper-caption {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+}
+.generator-fineprint,
+.download-caption,
+.preview-bottom {
+  font-size: 10px;
+}
+.possibility-card p {
+  font-size: 11px;
+}
+.qr-destination {
+  font-size: 11px;
+}
+.qr-card-footer > span,
+.qr-card-footer .text-button {
+  font-size: 10px;
+}
+.skip-link {
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link:focus-visible {
+  clip-path: none;
+  width: auto;
+  height: auto;
+  padding: 15px;
+  border: 2px solid var(--purple);
+  top: 10px;
+}
+.workspace-main:focus {
+  outline: none;
+}
+@media (max-width: 767px) {
+  body:has(.workspace) .toast-container {
+    bottom: 65px !important;
+  }
+}
+@media (max-width: 767px) {
+  .hero h1 {
+    font-size: clamp(38px, 10vw, 52px);
+    letter-spacing: -2.8px;
+  }
+  .hero-meta {
+    font-size: 9px;
+    gap: 8px;
+  }
+  .form-control,
+  .form-select,
+  .payload-fields .form-control {
+    font-size: 16px;
+  }
+  .library-toolbar > .form-select {
+    font-size: 12px;
+  }
+  .sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid #e5dcea;
+    z-index: 30;
+  }
+  .workspace-main {
+    padding-bottom: 115px;
+  }
+  .workspace .toast-container {
+    bottom: 65px !important;
+  }
+  .qr-destination {
+    font-size: 10px;
+  }
+}
