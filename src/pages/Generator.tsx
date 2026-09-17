@@ -133,12 +133,14 @@ type Draft = {
   media_id?: number
   project_id?: number | null
 }
-function initialDraft(): Draft {
-  try {
-    const draft = JSON.parse(sessionStorage.getItem('qrfactory.draft') || 'null')
-    if (draft?.payload_type) return draft
-  } catch {
-    /* Ignore an invalid old draft. */
+function initialDraft(restoreSavedDraft = true): Draft {
+  if (restoreSavedDraft) {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('qrfactory.draft') || 'null')
+      if (draft?.payload_type) return draft
+    } catch {
+      /* Ignore an invalid old draft. */
+    }
   }
   return {
     payload_type: 'url',
@@ -159,7 +161,9 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
   const attempt = useRef<{ body: string; key: string } | null>(null)
   const [search] = useSearchParams()
   const [draft, setDraft] = useState<Draft>(() => {
-    const d = initialDraft()
+    const d = initialDraft(!compact)
+    // The landing page always starts with Website; the studio resumes drafts.
+    if (compact) return d
     const type = search.get('type')
     return type && contentTypes.some((t) => t.value === type)
       ? { ...d, payload_type: type, payload: {} }
