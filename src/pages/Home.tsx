@@ -221,7 +221,7 @@ export default function Home() {
           {[
             [
               'Do I need an account to create a QR code?',
-              'No. Generate and download static QR codes right here, without signing up. Create an account when you want to save and manage codes, host files, or use dynamic links.',
+              'Try 20 website, text or Wi-Fi QR generations on this device. A free account unlocks unlimited websites and 10 daily generations across other types. File uploads and file QR codes require Pro.',
             ],
             [
               'What’s the difference between static and dynamic?',
@@ -229,7 +229,7 @@ export default function Home() {
             ],
             [
               'Can I change a file after printing my QR?',
-              'Yes. Replace the file in your file library and every QR linked to it will serve the new version. Your printed QR stays the same. Anyone with its link can access the file while the code is active.',
+              'Yes. With Pro, replace the file in your file library and every QR linked to it will serve the new version. Your printed QR stays the same. Anyone with its link can access the file while the code is active.',
             ],
             [
               'Which download format should I choose?',

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { grantPro } from './fixtures'
 
 test('expired access refreshes automatically, then login and logout work', async ({
   page,
@@ -155,6 +156,10 @@ test('guest draft signup, saved QR management, projects, files, and public shari
     await page.getByLabel('Sharing is active').uncheck()
     await page.getByRole('button', { name: 'Save changes' }).click()
     await expect(page.getByText('Paused / expired', { exact: true })).toBeVisible()
+    const fixtureUser = await page.evaluate(
+      () => JSON.parse(sessionStorage.getItem('qrfactory.session')!).user.id,
+    )
+    grantPro(fixtureUser)
     await page.goto('/create?type=media')
     await page.getByLabel('Upload a file', { exact: true }).setInputFiles({
       name: 'launch.pdf',
@@ -211,7 +216,9 @@ test('validation, sign-in errors, and unavailable shared content', async ({ page
   await page.goto('/share/00000000-0000-0000-0000-000000000000')
   await expect(page.getByRole('heading', { name: 'This connection is unavailable.' })).toBeVisible()
   await page.goto('/create?type=media')
-  await expect(page.getByRole('heading', { name: 'A little space for your files.' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'A free account opens more doors.' }),
+  ).toBeVisible()
   await page.goto('/library')
   await expect(page.getByRole('heading', { name: 'A home for every QR code.' })).toBeVisible()
 })
@@ -245,6 +252,7 @@ test('real uploaded image previews and WebM video plays through a public QR link
   })
   expect(account.ok()).toBeTruthy()
   const session = await account.json()
+  grantPro(session.user.id)
   const headers = { Authorization: `Bearer ${session.access_token}` }
   const assets: number[] = [],
     codes: number[] = []

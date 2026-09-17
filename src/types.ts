@@ -26,7 +26,13 @@ export type QR = {
   scan_count: number
   created_at: string
 }
-export type Preview = { image_data_url: string; data: string; image_format: string; saved: false }
+export type Preview = {
+  images: Record<string, string>
+  image_data_url: string
+  data: string
+  image_format: string
+  saved: false
+}
 export type Project = { id: number; name: string; description: string | null; qr_count: number }
 export type Asset = {
   id: number

@@ -17,6 +17,7 @@ import Button from 'react-bootstrap/Button'
 import Modal from 'react-bootstrap/Modal'
 import { api, API_BASE, download, patch } from '../api'
 import { useApp } from '../context'
+import { UpgradeCard } from '../billing'
 import {
   bytes,
   ConfirmDelete,
@@ -30,7 +31,7 @@ import {
 import type { Asset, Page, Usage } from '../types'
 
 export default function Files() {
-  const { notify } = useApp()
+  const { notify, entitlements } = useApp()
   const [files, setFiles] = useState<Page<Asset> | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
   const [query, setQuery] = useState('')
@@ -72,6 +73,10 @@ export default function Files() {
     }
   }, [reload, query, page])
   async function upload(file: File) {
+    if (entitlements?.tier !== 'pro') {
+      setError('Upgrade to Pro to upload or replace files.')
+      return
+    }
     if (usage && file.size > usage.max_upload_bytes) {
       setError(`Choose a file smaller than ${bytes(usage.max_upload_bytes)}.`)
       return
@@ -105,12 +110,15 @@ export default function Files() {
   }
   return (
     <>
+      {entitlements?.tier !== 'pro' && (
+        <UpgradeCard reason="Give your files a shortcut with Pro." />
+      )}
       <PageHeading
         eyebrow="YOUR CONTENT, CONNECTED"
         title="File library"
         description="A home for the things you want to put out there."
         action={
-          <Button onClick={chooseUpload} disabled={busy}>
+          <Button onClick={chooseUpload} disabled={busy || entitlements?.tier !== 'pro'}>
             <FileUp size={17} />
             {busy ? 'Uploading…' : 'Upload a file'}
           </Button>
@@ -129,7 +137,11 @@ export default function Files() {
         }}
       />
       <div className="file-library-top">
-        <button className="upload-zone library-dropzone" disabled={busy} onClick={chooseUpload}>
+        <button
+          className="upload-zone library-dropzone"
+          disabled={busy || entitlements?.tier !== 'pro'}
+          onClick={chooseUpload}
+        >
           <span className="upload-icon">
             <FileUp size={24} />
           </span>

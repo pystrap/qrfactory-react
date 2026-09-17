@@ -25,8 +25,9 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
-import { api, API_BASE, download, post } from '../api'
+import { api, ApiError, API_BASE, download } from '../api'
 import { useApp } from '../context'
+import { UpgradeCard, UsageBanner } from '../billing'
 import { bytes, ErrorNotice } from '../components'
 import type { Asset, Page, Preview, Project, QR, Usage } from '../types'
 
@@ -153,7 +154,9 @@ function initialDraft(): Draft {
   }
 }
 export default function Generator({ compact = false }: { compact?: boolean }) {
-  const { user, notify } = useApp()
+  const { user, notify, entitlements, refreshEntitlements } = useApp()
+  const [gateError, setGateError] = useState('')
+  const attempt = useRef<{ body: string; key: string } | null>(null)
   const [search] = useSearchParams()
   const [draft, setDraft] = useState<Draft>(() => {
     const d = initialDraft()
@@ -178,6 +181,10 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
     }
   }, [result])
   const type = contentTypes.find((t) => t.value === draft.payload_type) || contentTypes[0]
+  const loginRequired = !user && !['url', 'text', 'wifi'].includes(type.value)
+  const proRequired = type.value === 'media' && entitlements?.tier !== 'pro'
+  const limitReached = entitlements?.remaining === 0 && (!user || type.value !== 'url')
+  const blocked = loginRequired || proRequired || limitReached
   const update = (values: Partial<Draft>) => setDraft((previous) => ({ ...previous, ...values }))
   const remember = () => sessionStorage.setItem('qrfactory.draft', JSON.stringify(draft))
   useEffect(() => {
@@ -202,19 +209,34 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
   }, [user])
   async function generate(event: React.FormEvent) {
     event.preventDefault()
+    if (blocked) return
     setBusy(true)
     setError('')
+    setGateError('')
     try {
       const body = { ...draft, is_dynamic: draft.payload_type === 'media' || draft.is_dynamic }
-      const response = user
-        ? await post<QR>('/qr-codes', body)
-        : await post<Preview>('/qr-codes/preview', body)
+      const serialized = JSON.stringify(body)
+      if (attempt.current?.body !== serialized)
+        attempt.current = { body: serialized, key: crypto.randomUUID() }
+      const response = await api<QR | Preview>(user ? '/qr-codes' : '/qr-codes/preview', {
+        method: 'POST',
+        body: serialized,
+        headers: { 'Idempotency-Key': attempt.current.key },
+      })
+      attempt.current = null
+      await refreshEntitlements()
       setResult(response)
       setResultDraft(body)
       sessionStorage.removeItem('qrfactory.draft')
       if (user) notify('QR code saved to your workspace.')
     } catch (e) {
-      setError((e as Error).message)
+      if (
+        e instanceof ApiError &&
+        ['login_required', 'pro_required', 'device_limit', 'daily_limit'].includes(e.code || '')
+      )
+        setGateError(e.message)
+      else setError((e as Error).message)
+      await refreshEntitlements()
     } finally {
       setBusy(false)
     }
@@ -230,11 +252,7 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
           true,
         )
       else {
-        const preview =
-          format === result.image_format
-            ? result
-            : await post<Preview>('/qr-codes/preview', { ...resultDraft, image_format: format })
-        await download(preview.image_data_url, `qrfactory.${format}`)
+        await download(result.images[format], `qrfactory.${format}`)
       }
       notify(`${format.toUpperCase()} downloaded. Ready for the real world.`)
     } catch (e) {
@@ -254,9 +272,10 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
         </span>
         <span>
           <ShieldCheck size={14} />{' '}
-          {user ? 'Saved to your workspace' : 'Free to create. No sign-up needed.'}
+          {user ? 'Saved to your workspace' : 'Website, text & Wi-Fi · 20 free generations'}
         </span>
       </div>
+      <UsageBanner onContinue={remember} />
       <div className="type-tabs" role="group" aria-label="QR content type">
         {contentTypes.map(({ value, label, icon: Icon }) => (
           <button
@@ -266,11 +285,16 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
             onClick={() => {
               update({ payload_type: value, payload: {}, is_dynamic: false, media_id: undefined })
               setError('')
+              setGateError('')
             }}
           >
             <Icon size={18} />
             <span>{label}</span>
-            {value === 'media' && <i />}
+            {value === 'media' ? (
+              <small className="type-badge">Pro</small>
+            ) : !user && !['url', 'text', 'wifi'].includes(value) ? (
+              <small className="type-badge">Account</small>
+            ) : null}
           </button>
         ))}
       </div>
@@ -291,264 +315,270 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
                 ? 'One upload. One QR code. A whole new way to share.'
                 : 'Add your details. We’ll turn them into something scannable.'}
           </p>
-          <div className={`payload-fields ${type.fields.length > 1 ? 'multi-field' : ''}`}>
-            {type.fields.map((field) => (
-              <Form.Group
-                key={`${type.value}-${field.key}`}
-                controlId={`payload-${field.key}`}
-                className={field.input === 'textarea' ? 'full-width' : ''}
-              >
-                <Form.Label>
-                  {field.label}
-                  {field.optional && <span className="optional"> optional</span>}
-                </Form.Label>
-                <Form.Control
-                  as={field.input === 'textarea' ? 'textarea' : 'input'}
-                  type={field.input === 'textarea' ? undefined : field.input || 'text'}
-                  step={field.input === 'number' ? 'any' : undefined}
-                  style={field.input === 'textarea' ? { minHeight: 100 } : undefined}
-                  placeholder={field.placeholder}
-                  value={String(draft.payload[field.key] || '')}
-                  maxLength={field.input === 'number' ? undefined : 2500}
-                  required={!field.optional}
+          {(blocked || gateError) && (
+            <UpgradeCard
+              onContinue={remember}
+              reason={
+                gateError ||
+                (limitReached
+                  ? !user
+                    ? 'Your 20 free device generations are all used.'
+                    : 'You’ve made your 10 daily connections.'
+                  : loginRequired
+                    ? 'A free account opens more doors.'
+                    : 'Give your files the Pro treatment.')
+              }
+            />
+          )}
+          <fieldset disabled={blocked || busy}>
+            <div className={`payload-fields ${type.fields.length > 1 ? 'multi-field' : ''}`}>
+              {type.fields.map((field) => (
+                <Form.Group
+                  key={`${type.value}-${field.key}`}
+                  controlId={`payload-${field.key}`}
+                  className={field.input === 'textarea' ? 'full-width' : ''}
+                >
+                  <Form.Label>
+                    {field.label}
+                    {field.optional && <span className="optional"> optional</span>}
+                  </Form.Label>
+                  <Form.Control
+                    as={field.input === 'textarea' ? 'textarea' : 'input'}
+                    type={field.input === 'textarea' ? undefined : field.input || 'text'}
+                    step={field.input === 'number' ? 'any' : undefined}
+                    style={field.input === 'textarea' ? { minHeight: 100 } : undefined}
+                    placeholder={field.placeholder}
+                    value={String(draft.payload[field.key] || '')}
+                    maxLength={field.input === 'number' ? undefined : 2500}
+                    required={!field.optional}
+                    onChange={(e) =>
+                      update({ payload: { ...draft.payload, [field.key]: e.target.value } })
+                    }
+                  />
+                </Form.Group>
+              ))}
+            </div>
+            {type.value === 'wifi' && (
+              <div className="wifi-options">
+                <Form.Group controlId="wifi-security">
+                  <Form.Label>Security</Form.Label>
+                  <Form.Select
+                    value={String(draft.payload.security || 'WPA')}
+                    onChange={(e) =>
+                      update({ payload: { ...draft.payload, security: e.target.value } })
+                    }
+                  >
+                    <option>WPA</option>
+                    <option>WEP</option>
+                    <option value="nopass">Open network</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Check
+                  id="wifi-hidden"
+                  label="Hidden network"
+                  checked={!!draft.payload.hidden}
                   onChange={(e) =>
-                    update({ payload: { ...draft.payload, [field.key]: e.target.value } })
+                    update({ payload: { ...draft.payload, hidden: e.target.checked } })
                   }
                 />
-              </Form.Group>
-            ))}
-          </div>
-          {type.value === 'wifi' && (
-            <div className="wifi-options">
-              <Form.Group controlId="wifi-security">
-                <Form.Label>Security</Form.Label>
-                <Form.Select
-                  value={String(draft.payload.security || 'WPA')}
-                  onChange={(e) =>
-                    update({ payload: { ...draft.payload, security: e.target.value } })
-                  }
-                >
-                  <option>WPA</option>
-                  <option>WEP</option>
-                  <option value="nopass">Open network</option>
-                </Form.Select>
-              </Form.Group>
-              <Form.Check
-                id="wifi-hidden"
-                label="Hidden network"
-                checked={!!draft.payload.hidden}
-                onChange={(e) =>
-                  update({ payload: { ...draft.payload, hidden: e.target.checked } })
-                }
-              />
-            </div>
-          )}
-          {type.value === 'media' &&
-            (!user ? (
-              <div className="upload-signin">
-                <FileUp size={30} />
-                <h3>A little space for your files.</h3>
-                <p>
-                  Sign in to host documents, photos, video, and audio. Keep the same QR code when
-                  you replace a file.
-                </p>
-                <Link to="/register" className="btn btn-primary btn-sm" onClick={remember}>
-                  Create free account <ArrowRight size={15} />
-                </Link>
-                <Link className="small" to="/login" onClick={remember}>
-                  Already have an account? Log in
-                </Link>
               </div>
-            ) : (
-              <div className="file-picker">
-                <label className={`upload-zone ${uploadBusy ? 'busy' : ''}`}>
-                  <FileUp size={26} />
-                  <strong>{uploadBusy ? 'Uploading your file…' : 'Choose a file to share'}</strong>
-                  <span>
-                    Documents, images, video & audio · up to{' '}
-                    {bytes(usage?.max_upload_bytes || 26214400)}
-                  </span>
-                  <input
-                    type="file"
-                    aria-label="Upload a file"
-                    disabled={uploadBusy}
-                    accept={
-                      usage?.allowed_extensions.join(',') ||
-                      '.pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.webp,.mp4,.webm,.mp3,.wav'
-                    }
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      if (usage && file.size > usage.max_upload_bytes) {
-                        setError(`Please choose a file under ${bytes(usage.max_upload_bytes)}.`)
-                        return
+            )}
+            {type.value === 'media' &&
+              (proRequired ? null : (
+                <div className="file-picker">
+                  <label className={`upload-zone ${uploadBusy ? 'busy' : ''}`}>
+                    <FileUp size={26} />
+                    <strong>
+                      {uploadBusy ? 'Uploading your file…' : 'Choose a file to share'}
+                    </strong>
+                    <span>
+                      Documents, images, video & audio · up to{' '}
+                      {bytes(usage?.max_upload_bytes || 26214400)}
+                    </span>
+                    <input
+                      type="file"
+                      aria-label="Upload a file"
+                      disabled={uploadBusy}
+                      accept={
+                        usage?.allowed_extensions.join(',') ||
+                        '.pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.webp,.mp4,.webm,.mp3,.wav'
                       }
-                      setUploadBusy(true)
-                      setError('')
-                      try {
-                        const form = new FormData()
-                        form.append('file', file)
-                        const asset = await api<Asset>('/media-assets', {
-                          method: 'POST',
-                          body: form,
-                        })
-                        setAssets((previous) => [asset, ...previous])
-                        update({ media_id: asset.id, title: draft.title || asset.title })
-                        notify('File uploaded. Generate its QR code below.')
-                      } catch (err) {
-                        setError((err as Error).message)
-                      } finally {
-                        setUploadBusy(false)
-                        e.target.value = ''
-                      }
-                    }}
-                  />
-                </label>
-                {assets.length > 0 && (
-                  <Form.Group controlId="existing-file">
-                    <Form.Label>Or use a file from your library</Form.Label>
-                    <Form.Select
-                      required
-                      value={draft.media_id || ''}
-                      onChange={(e) => update({ media_id: Number(e.target.value) })}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (usage && file.size > usage.max_upload_bytes) {
+                          setError(`Please choose a file under ${bytes(usage.max_upload_bytes)}.`)
+                          return
+                        }
+                        setUploadBusy(true)
+                        setError('')
+                        try {
+                          const form = new FormData()
+                          form.append('file', file)
+                          const asset = await api<Asset>('/media-assets', {
+                            method: 'POST',
+                            body: form,
+                          })
+                          setAssets((previous) => [asset, ...previous])
+                          update({ media_id: asset.id, title: draft.title || asset.title })
+                          notify('File uploaded. Generate its QR code below.')
+                        } catch (err) {
+                          setError((err as Error).message)
+                        } finally {
+                          setUploadBusy(false)
+                          e.target.value = ''
+                        }
+                      }}
+                    />
+                  </label>
+                  {assets.length > 0 && (
+                    <Form.Group controlId="existing-file">
+                      <Form.Label>Or use a file from your library</Form.Label>
+                      <Form.Select
+                        required
+                        value={draft.media_id || ''}
+                        onChange={(e) => update({ media_id: Number(e.target.value) })}
+                      >
+                        <option value="">Choose an uploaded file</option>
+                        {assets.map((asset) => (
+                          <option key={asset.id} value={asset.id}>
+                            {asset.title} · {bytes(asset.size)}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  )}
+                  <small className="text-muted">
+                    Anyone with the generated link can access this file. You can pause sharing any
+                    time.
+                  </small>
+                </div>
+              ))}
+            <details className="style-details">
+              <summary>
+                <span>
+                  <Palette size={17} /> Make it yours <small>Colors & options</small>
+                </span>
+                <ChevronDown size={16} />
+              </summary>
+              <div className="style-options">
+                <div className="color-presets">
+                  <span>Quick styles</span>
+                  {[
+                    { name: 'Original', ink: '#1b2235', paper: '#ffffff' },
+                    { name: 'Violet', ink: '#5636bc', paper: '#faf7ff' },
+                    { name: 'Forest', ink: '#155b43', paper: '#f1fcf5' },
+                    { name: 'Terracotta', ink: '#813a2c', paper: '#fff8f1' },
+                  ].map((style) => (
+                    <button
+                      type="button"
+                      key={style.name}
+                      title={style.name}
+                      aria-label={`${style.name} style`}
+                      className={draft.fill_color === style.ink ? 'active' : ''}
+                      style={{ background: style.paper, color: style.ink }}
+                      onClick={() => update({ fill_color: style.ink, back_color: style.paper })}
                     >
-                      <option value="">Choose an uploaded file</option>
-                      {assets.map((asset) => (
-                        <option key={asset.id} value={asset.id}>
-                          {asset.title} · {bytes(asset.size)}
+                      <QrCode size={24} />
+                    </button>
+                  ))}
+                </div>
+                <div className="row g-3">
+                  <Form.Group className="col-6" controlId="foreground">
+                    <Form.Label>Code color</Form.Label>
+                    <Form.Control
+                      type="color"
+                      value={draft.fill_color}
+                      onChange={(e) => update({ fill_color: e.target.value })}
+                    />
+                  </Form.Group>
+                  <Form.Group className="col-6" controlId="background">
+                    <Form.Label>Background</Form.Label>
+                    <Form.Control
+                      type="color"
+                      value={draft.back_color}
+                      onChange={(e) => update({ back_color: e.target.value })}
+                    />
+                  </Form.Group>
+                  <Form.Group className="col-6" controlId="qr-size">
+                    <Form.Label>Resolution</Form.Label>
+                    <Form.Select
+                      value={draft.box_size}
+                      onChange={(e) => update({ box_size: Number(e.target.value) })}
+                    >
+                      <option value={10}>Standard</option>
+                      <option value={20}>High resolution</option>
+                    </Form.Select>
+                  </Form.Group>
+                  <Form.Group className="col-6" controlId="qr-correction">
+                    <Form.Label>Error correction</Form.Label>
+                    <Form.Select
+                      value={draft.error_correction}
+                      onChange={(e) => update({ error_correction: e.target.value })}
+                    >
+                      <option value="M">Balanced · M</option>
+                      <option value="Q">Extra resilient · Q</option>
+                      <option value="H">Most resilient · H</option>
+                    </Form.Select>
+                  </Form.Group>
+                </div>
+                <small>Keep strong contrast and test a scan before printing.</small>
+              </div>
+            </details>
+            {user && (
+              <div className="save-options">
+                <Form.Group controlId="qr-title">
+                  <Form.Label>
+                    Name your QR <span className="optional">optional</span>
+                  </Form.Label>
+                  <Form.Control
+                    value={draft.title}
+                    maxLength={255}
+                    placeholder="Something memorable"
+                    onChange={(e) => update({ title: e.target.value })}
+                  />
+                </Form.Group>
+                {projects.length > 0 && (
+                  <Form.Group controlId="qr-project">
+                    <Form.Label>Project</Form.Label>
+                    <Form.Select
+                      value={draft.project_id || ''}
+                      onChange={(e) =>
+                        update({ project_id: e.target.value ? Number(e.target.value) : null })
+                      }
+                    >
+                      <option value="">No project</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
                         </option>
                       ))}
                     </Form.Select>
                   </Form.Group>
                 )}
-                <small className="text-muted">
-                  Anyone with the generated link can access this file. You can pause sharing any
-                  time.
-                </small>
+                {type.value === 'url' && (
+                  <div className="dynamic-option">
+                    <Form.Check
+                      type="switch"
+                      id="dynamic-toggle"
+                      label="Make this a dynamic QR"
+                      checked={draft.is_dynamic}
+                      onChange={(e) => update({ is_dynamic: e.target.checked })}
+                    />
+                    <small>Change the destination later, pause sharing, and track scans.</small>
+                  </div>
+                )}
               </div>
-            ))}
-          <details className="style-details">
-            <summary>
-              <span>
-                <Palette size={17} /> Make it yours <small>Colors & options</small>
-              </span>
-              <ChevronDown size={16} />
-            </summary>
-            <div className="style-options">
-              <div className="color-presets">
-                <span>Quick styles</span>
-                {[
-                  { name: 'Original', ink: '#1b2235', paper: '#ffffff' },
-                  { name: 'Violet', ink: '#5636bc', paper: '#faf7ff' },
-                  { name: 'Forest', ink: '#155b43', paper: '#f1fcf5' },
-                  { name: 'Terracotta', ink: '#813a2c', paper: '#fff8f1' },
-                ].map((style) => (
-                  <button
-                    type="button"
-                    key={style.name}
-                    title={style.name}
-                    aria-label={`${style.name} style`}
-                    className={draft.fill_color === style.ink ? 'active' : ''}
-                    style={{ background: style.paper, color: style.ink }}
-                    onClick={() => update({ fill_color: style.ink, back_color: style.paper })}
-                  >
-                    <QrCode size={24} />
-                  </button>
-                ))}
-              </div>
-              <div className="row g-3">
-                <Form.Group className="col-6" controlId="foreground">
-                  <Form.Label>Code color</Form.Label>
-                  <Form.Control
-                    type="color"
-                    value={draft.fill_color}
-                    onChange={(e) => update({ fill_color: e.target.value })}
-                  />
-                </Form.Group>
-                <Form.Group className="col-6" controlId="background">
-                  <Form.Label>Background</Form.Label>
-                  <Form.Control
-                    type="color"
-                    value={draft.back_color}
-                    onChange={(e) => update({ back_color: e.target.value })}
-                  />
-                </Form.Group>
-                <Form.Group className="col-6" controlId="qr-size">
-                  <Form.Label>Resolution</Form.Label>
-                  <Form.Select
-                    value={draft.box_size}
-                    onChange={(e) => update({ box_size: Number(e.target.value) })}
-                  >
-                    <option value={10}>Standard</option>
-                    <option value={20}>High resolution</option>
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="col-6" controlId="qr-correction">
-                  <Form.Label>Error correction</Form.Label>
-                  <Form.Select
-                    value={draft.error_correction}
-                    onChange={(e) => update({ error_correction: e.target.value })}
-                  >
-                    <option value="M">Balanced · M</option>
-                    <option value="Q">Extra resilient · Q</option>
-                    <option value="H">Most resilient · H</option>
-                  </Form.Select>
-                </Form.Group>
-              </div>
-              <small>Keep strong contrast and test a scan before printing.</small>
-            </div>
-          </details>
-          {user && (
-            <div className="save-options">
-              <Form.Group controlId="qr-title">
-                <Form.Label>
-                  Name your QR <span className="optional">optional</span>
-                </Form.Label>
-                <Form.Control
-                  value={draft.title}
-                  maxLength={255}
-                  placeholder="Something memorable"
-                  onChange={(e) => update({ title: e.target.value })}
-                />
-              </Form.Group>
-              {projects.length > 0 && (
-                <Form.Group controlId="qr-project">
-                  <Form.Label>Project</Form.Label>
-                  <Form.Select
-                    value={draft.project_id || ''}
-                    onChange={(e) =>
-                      update({ project_id: e.target.value ? Number(e.target.value) : null })
-                    }
-                  >
-                    <option value="">No project</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              )}
-              {type.value === 'url' && (
-                <div className="dynamic-option">
-                  <Form.Check
-                    type="switch"
-                    id="dynamic-toggle"
-                    label="Make this a dynamic QR"
-                    checked={draft.is_dynamic}
-                    onChange={(e) => update({ is_dynamic: e.target.checked })}
-                  />
-                  <small>Change the destination later, pause sharing, and track scans.</small>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </fieldset>
           <ErrorNotice error={error} />
-          {!(type.value === 'media' && !user) && (
+          {!blocked && (
             <Button
               type="submit"
               className="generate-button"
-              disabled={busy || uploadBusy || (type.value === 'media' && !draft.media_id)}
+              disabled={
+                busy || uploadBusy || !entitlements || (type.value === 'media' && !draft.media_id)
+              }
             >
               {busy ? (
                 <>
@@ -563,7 +593,9 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
           )}
           <div className="generator-fineprint">
             <Check size={13} />{' '}
-            {user ? 'Always yours. Ready to share.' : 'No account. No fuss. Just your QR.'}
+            {user
+              ? 'Always yours. Ready to share.'
+              : '20 free generations on this device. Downloads included.'}
           </div>
         </Form>
         <aside ref={previewRef} className="preview-panel">

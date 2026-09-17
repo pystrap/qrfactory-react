@@ -1,6 +1,8 @@
 import type { AuthResult } from './types'
 
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://qrfactorycore.cweb.app/api').replace(/\/$/, '')
+export const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL || 'https://qrfactorycore.cweb.app/api'
+).replace(/\/$/, '')
 // Session-scoped so signing out/closing the browser clears tokens and sensitive drafts.
 const sessionKey = 'qrfactory.session'
 export function getSession(): AuthResult | null {
@@ -26,6 +28,38 @@ function errorMessage(value: unknown): string {
       )
       .join(' ')
   return 'Something went wrong. Please try again.'
+}
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+  ) {
+    super(message)
+  }
+}
+let devicePromise: Promise<string> | null = null
+async function ensureDevice(): Promise<string> {
+  const existing = localStorage.getItem('qrfactory.device')
+  if (existing) return existing
+  if (!devicePromise) {
+    const create = async () => {
+      const stored = localStorage.getItem('qrfactory.device')
+      if (stored) return stored
+      const response = await fetch(`${API_BASE}/billing/device`, { method: 'POST' })
+      if (!response.ok)
+        throw new Error('Could not initialize your device. Please try again shortly.')
+      const { device_token } = await response.json()
+      localStorage.setItem('qrfactory.device', device_token)
+      return device_token as string
+    }
+    devicePromise = (async () =>
+      navigator.locks
+        ? await navigator.locks.request('qrfactory-device', create)
+        : await create())().finally(() => {
+      devicePromise = null
+    })
+  }
+  return devicePromise!
 }
 let refreshing: Promise<boolean> | null = null
 async function refreshSession() {
@@ -59,6 +93,8 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   const headers = new Headers(init.headers)
   const session = getSession()
   if (session) headers.set('Authorization', `Bearer ${session.access_token}`)
+  else if (path === '/billing/status' || path === '/qr-codes/preview')
+    headers.set('X-Device-Token', await ensureDevice())
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
   let response: Response
   try {
@@ -76,7 +112,7 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
     const data = await response
       .json()
       .catch(() => ({ detail: `Request failed (${response.status}). Please try again.` }))
-    throw new Error(errorMessage(data))
+    throw new ApiError(errorMessage(data.detail || data), data.code)
   }
   if (response.status === 204) return undefined as T
   return response.json()

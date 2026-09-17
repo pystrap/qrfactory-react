@@ -3,6 +3,7 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { Header, Footer, SignInPrompt, Workspace } from './components'
 import { useApp } from './context'
 import Home from './pages/Home'
+import Pricing from './pages/Pricing'
 import Generator from './pages/Generator'
 import Auth from './pages/Auth'
 import Library from './pages/Library'
@@ -24,6 +25,7 @@ export default function App() {
     const titles: Record<string, string> = {
       '/': 'Make something worth scanning.',
       '/create': 'QR studio',
+      '/pricing': 'Meet Pro',
       '/library': 'My QR codes',
       '/files': 'File library',
       '/projects': 'Projects',
@@ -63,6 +65,7 @@ export default function App() {
             </main>
           }
         />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<Auth mode="login" />} />
         <Route path="/register" element={<Auth mode="register" />} />
         <Route

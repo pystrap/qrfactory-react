@@ -50,6 +50,7 @@ export function Header() {
           <Link to="/create">QR generator</Link>
           <a href="/#possibilities">What can I create?</a>
           <Link to="/library">My QR codes</Link>
+          <Link to="/pricing">Plans & Pro</Link>
         </nav>
         <div className="header-actions">
           {user ? (
@@ -92,6 +93,7 @@ const workspaceLinks = [
   { to: '/library', icon: LayoutGrid, text: 'My QR codes' },
   { to: '/files', icon: Files, text: 'File library' },
   { to: '/projects', icon: FolderOpen, text: 'Projects' },
+  { to: '/pricing', icon: Sparkles, text: 'Plans & billing' },
   { to: '/account', icon: UserRound, text: 'My account' },
 ]
 export function Workspace({ children }: { children: ReactNode }) {

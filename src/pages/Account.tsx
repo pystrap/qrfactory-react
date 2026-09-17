@@ -2,10 +2,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, LogOut, ShieldCheck } from 'lucide-react'
 import Button from 'react-bootstrap/Button'
 import { useApp } from '../context'
+import { UsageBanner, UpgradeCard } from '../billing'
 import { dateLabel, PageHeading } from '../components'
 
 export default function Account() {
-  const { user, logout } = useApp()
+  const { user, logout, entitlements } = useApp()
   const navigate = useNavigate()
   return (
     <>
@@ -14,6 +15,11 @@ export default function Account() {
         title="Your account"
         description="A little corner of QRFactory, just for you."
       />
+      <UsageBanner />
+      {entitlements?.tier !== 'pro' && <UpgradeCard />}
+      <Link className="text-button mb-4" to="/pricing">
+        Manage plan & billing <ArrowRight size={16} />
+      </Link>
       <div className="account-card">
         <span className="avatar large">
           {(user?.full_name || user?.email || 'Y')[0].toUpperCase()}

@@ -114,3 +114,36 @@ tests/platform.spec.ts   Real full-stack browser tests
 ```
 
 Uses [React Bootstrap](https://react-bootstrap.github.io/docs/getting-started/introduction/) and [Vite](https://vite.dev/guide/). Fonts ship locally; no third-party font CDN is required.
+
+## Memberships and billing
+
+The studio and workspace display server-provided allowances. `/pricing` contains the Free/Pro comparison, enabled weekly/monthly/yearly prices, Stripe Checkout, confirmation and billing management. The server supplies all prices and entitlements; no Stripe secret or publishable key is needed in the browser because Checkout is hosted by Stripe. Account creation from pricing returns to pricing. Generator drafts remain in session storage across signup.
+
+Configure `VITE_API_BASE_URL` for the backend and `VITE_SITE_URL` for canonical URLs. The API base must use HTTPS in production; cryptographic UUIDs and the browser lock API work in secure contexts. Browser device tokens live in localStorage; authentication tokens and drafts remain in sessionStorage. Clearing browser storage changes the browser's device identity.
+
+Before deployment, follow [the backend billing and cWeb rollout guide](../django/BILLING_AND_DEPLOYMENT.md). Pro sales remain unavailable until credentials and enabled admin prices are configured. Store subscription clients have not been implemented.
+
+### Local end-to-end tests
+
+Use a disposable backend only. Start from the `django` directory:
+
+```sh
+python manage.py migrate --settings=core.test_settings
+python manage.py runserver 127.0.0.1:8000 --settings=core.test_settings --noreload
+```
+
+Then in `qrfactory-react`, install the locked dependencies and run Vite in another terminal:
+
+```sh
+npm ci
+VITE_API_BASE_URL=/api npm run dev -- --host 127.0.0.1
+```
+
+Install Playwright's Chromium/browser dependencies for your environment, then run:
+
+```sh
+E2E_DJANGO_PYTHON=/absolute/path/to/venv/bin/python npm run test:e2e
+npm run build
+```
+
+The suite runs at desktop and iPhone widths. It verifies device persistence, account gates, daily allowance, website exemption, signup/draft retention, files, dynamic links and accessibility. File tests use a guarded local fixture command to provide Pro entitlement; that command rejects production settings and non-test accounts. Provider verification, checkout and lifecycle events are tested in Django with mocked provider APIs; complete real Stripe/Apple/Google sandbox checks after configuring those accounts.

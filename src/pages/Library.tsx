@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowDownToLine,
@@ -20,8 +20,9 @@ import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
 import Modal from 'react-bootstrap/Modal'
 import Dropdown from 'react-bootstrap/Dropdown'
-import { api, API_BASE, download, patch, post } from '../api'
+import { api, ApiError, API_BASE, download, patch } from '../api'
 import { useApp } from '../context'
+import { UpgradeCard, UsageBanner } from '../billing'
 import {
   ConfirmDelete,
   dateLabel,
@@ -35,7 +36,20 @@ import type { Analytics, Page, Project, QR, Summary } from '../types'
 import { contentTypes } from './Generator'
 
 export default function Library() {
-  const { user, notify } = useApp()
+  const { user, notify, refreshEntitlements } = useApp()
+  const [gateError, setGateError] = useState('')
+  const duplicateKeys = useRef(new Map<number, string>())
+  async function duplicate(code: QR) {
+    const key = duplicateKeys.current.get(code.id) || crypto.randomUUID()
+    duplicateKeys.current.set(code.id, key)
+    await api(`/qr-codes/${code.id}/duplicate`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': key },
+      body: '{}',
+    })
+    duplicateKeys.current.delete(code.id)
+    await refreshEntitlements()
+  }
   const [params] = useSearchParams()
   const [data, setData] = useState<Page<QR> | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
@@ -90,12 +104,16 @@ export default function Library() {
   const refresh = () => setReload((value) => value + 1)
   async function act(code: QR, task: () => Promise<unknown>, success: string) {
     setPending(code.id)
+    setGateError('')
     try {
       await task()
       notify(success)
       refresh()
     } catch (e) {
-      setError((e as Error).message)
+      if (e instanceof ApiError && ['daily_limit', 'pro_required'].includes(e.code || ''))
+        setGateError(e.message)
+      else setError((e as Error).message)
+      await refreshEntitlements()
     } finally {
       setPending(null)
     }
@@ -112,6 +130,8 @@ export default function Library() {
           </Link>
         }
       />
+      <UsageBanner />
+      {gateError && <UpgradeCard reason={gateError} />}
       <div className="stats-grid">
         {[
           { label: 'Total QR codes', value: summary?.total, icon: QrCode, color: 'lavender' },
@@ -247,11 +267,7 @@ export default function Library() {
                         <Dropdown.Item
                           disabled={pending === code.id}
                           onClick={() =>
-                            void act(
-                              code,
-                              () => post(`/qr-codes/${code.id}/duplicate`, {}),
-                              'A fresh copy is ready.',
-                            )
+                            void act(code, () => duplicate(code), 'A fresh copy is ready.')
                           }
                         >
                           <Copy size={15} /> Duplicate

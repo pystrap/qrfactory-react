@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
 import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
@@ -11,14 +11,18 @@ import type { AuthResult } from '../types'
 export default function Auth({ mode }: { mode: 'login' | 'register' }) {
   const { user, notify } = useApp()
   const navigate = useNavigate()
+  const [search] = useSearchParams()
+  const destination =
+    search.get('next') === '/pricing'
+      ? '/pricing'
+      : sessionStorage.getItem('qrfactory.draft')
+        ? '/create'
+        : '/library'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [visible, setVisible] = useState(false)
   const signup = mode === 'register'
-  if (user)
-    return (
-      <Navigate to={sessionStorage.getItem('qrfactory.draft') ? '/create' : '/library'} replace />
-    )
+  if (user) return <Navigate to={destination} replace />
   return (
     <main className="auth-page container-xl" id="main-content">
       <div className="auth-story">
@@ -36,7 +40,7 @@ export default function Auth({ mode }: { mode: 'login' | 'register' }) {
         <ul>
           {[
             'Keep every QR code in one place',
-            'Share files with a single scan',
+            'Unlock file sharing with Pro',
             'Update links without reprinting',
             'See how your codes are connecting',
           ].map((text) => (
@@ -71,7 +75,7 @@ export default function Auth({ mode }: { mode: 'login' | 'register' }) {
               const session = await post<AuthResult>(`/auth/${mode}`, fields)
               setSession(session)
               notify(signup ? 'Your workspace is ready. Let’s make something.' : 'Welcome back!')
-              navigate(sessionStorage.getItem('qrfactory.draft') ? '/create' : '/library', {
+              navigate(destination, {
                 replace: true,
               })
             } catch (e) {
@@ -133,7 +137,10 @@ export default function Auth({ mode }: { mode: 'login' | 'register' }) {
         </Form>
         <p className="auth-switch">
           {signup ? 'Already have an account?' : 'New to QRFactory?'}{' '}
-          <Link onClick={() => setError('')} to={signup ? '/login' : '/register'}>
+          <Link
+            onClick={() => setError('')}
+            to={`${signup ? '/login' : '/register'}${search.get('next') === '/pricing' ? '?next=%2Fpricing' : ''}`}
+          >
             {signup ? 'Log in' : 'Create an account'}
           </Link>
         </p>
