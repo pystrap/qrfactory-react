@@ -49,7 +49,7 @@ export default function HowItWorks() {
           {[
             [
               'Choose what to share',
-              'The generator starts with Website. Paste your link, or choose another type and fill in the labeled fields.',
+              'The generator starts with URL. Paste your link, or choose another type and fill in the labeled fields.',
             ],
             [
               'Generate your QR',

@@ -178,7 +178,7 @@ test('public discovery, guide, SEO and responsive layout', async ({ page }, info
       fullPage: true,
     })
   }
-  await expect(page.getByRole('button', { name: 'Website', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'URL', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   )

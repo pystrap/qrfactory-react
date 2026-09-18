@@ -39,11 +39,9 @@ type Field = {
 export const contentTypes: { value: string; label: string; icon: LucideIcon; fields: Field[] }[] = [
   {
     value: 'url',
-    label: 'Website',
+    label: 'URL',
     icon: Link2,
-    fields: [
-      { key: 'url', label: 'Your website link', placeholder: 'Paste a link, like yourwebsite.com' },
-    ],
+    fields: [{ key: 'url', label: 'Your URL', placeholder: 'Paste a link, like yourwebsite.com' }],
   },
   {
     value: 'text',
@@ -160,13 +158,11 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
   const attempt = useRef<{ body: string; key: string } | null>(null)
   const [search] = useSearchParams()
   const [draft, setDraft] = useState<Draft>(() => {
-    const d = initialDraft(!compact)
-    // The landing page always starts with Website; the studio resumes drafts.
-    if (compact) return d
-    const type = search.get('type')
-    return type && contentTypes.some((t) => t.value === type)
-      ? { ...d, payload_type: type, payload: {} }
-      : d
+    const requestedType = compact ? null : search.get('type')
+    const type = contentTypes.find((item) => item.value === requestedType)?.value
+    // Explicit type links start fresh; plain /create still resumes a signup draft.
+    const d = initialDraft(!compact && !type)
+    return type ? { ...d, payload_type: type } : d
   })
   const [result, setResult] = useState<QR | Preview | null>(null)
   const [resultDraft, setResultDraft] = useState<Draft | null>(null)
@@ -275,7 +271,7 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
         </span>
         <span>
           <ShieldCheck size={14} />{' '}
-          {user ? 'Saved to your workspace' : 'Website, text & Wi-Fi · 20 free generations'}
+          {user ? 'Saved to your workspace' : 'URL, text & Wi-Fi · 20 free generations'}
         </span>
       </div>
       <UsageBanner onContinue={remember} />

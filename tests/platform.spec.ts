@@ -55,7 +55,7 @@ test('guest generation, PNG/SVG downloads, and responsive landing', async ({ pag
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy()
-  await page.getByLabel('Your website link').fill('https://example.com/my-first-qr')
+  await page.getByLabel('Your URL').fill('https://example.com/my-first-qr')
   await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Ready for the real world.' })).toBeVisible()
   await expect(page.getByAltText('Your generated QR code')).toHaveAttribute(
@@ -104,7 +104,7 @@ test('guest draft signup, saved QR management, projects, files, and public shari
   })
   try {
     await page.goto('/')
-    await page.getByLabel('Your website link').fill('https://example.com/guest-draft')
+    await page.getByLabel('Your URL').fill('https://example.com/guest-draft')
     await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
     await page.getByRole('link', { name: 'Save with a free account' }).click()
     await page.getByLabel('Your name').fill('Alex Browser Test')
@@ -115,9 +115,7 @@ test('guest draft signup, saved QR management, projects, files, and public shari
     token = await page.evaluate(
       () => JSON.parse(sessionStorage.getItem('qrfactory.session')!).access_token,
     )
-    await expect(page.getByLabel('Your website link')).toHaveValue(
-      'https://example.com/guest-draft',
-    )
+    await expect(page.getByLabel('Your URL')).toHaveValue('https://example.com/guest-draft')
     await page.locator('summary').filter({ hasText: 'Save & manage' }).click()
     await page.getByLabel('Name your QR').fill('Guest draft saved')
     await page.getByRole('button', { name: 'Generate QR Code' }).click()
@@ -139,7 +137,7 @@ test('guest draft signup, saved QR management, projects, files, and public shari
     await page.getByRole('button', { name: 'Save project' }).click()
     await expect(page.getByRole('heading', { name: 'Launch collection' })).toBeVisible()
     await page.goto('/create')
-    await page.getByLabel('Your website link').fill('https://example.com/before')
+    await page.getByLabel('Your URL').fill('https://example.com/before')
     await page.locator('summary').filter({ hasText: 'Save & manage' }).click()
     await page.getByLabel('Name your QR').fill('Dynamic launch')
     await page.getByLabel('Project', { exact: true }).selectOption({ label: 'Launch collection' })

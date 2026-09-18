@@ -46,7 +46,7 @@ export default function App() {
                   <p>Pick your content. Make it yours. Share it everywhere.</p>
                 </div>
               </div>
-              <Generator />
+              <Generator key={location.key} />
             </main>
           }
         />

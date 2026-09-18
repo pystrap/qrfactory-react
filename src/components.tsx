@@ -47,7 +47,7 @@ export function Header() {
       <div className="container-xl header-inner">
         <Logo />
         <nav className={`header-links ${open ? 'is-open' : ''}`} aria-label="Main navigation">
-          <Link to="/create">QR generator</Link>
+          <Link to="/create?type=url">QR generator</Link>
           <Link to="/how-it-works">How it works</Link>
           <Link to="/batch">
             Batch QR <span className="pro-label">Pro</span>
