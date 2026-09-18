@@ -92,12 +92,12 @@ Coverage: guest PNG/SVG downloads, signup/draft retention, favorites/duplication
 ## Deploy
 
 1. Set production environment values and build.
-2. Deploy `dist/` over HTTPS. Route frontend paths to `index.html`, especially `/share/*`.
+2. Deploy `dist/` over HTTPS. Serve existing route files first (`/create/index.html`, `/pricing/index.html`, `/batch/index.html`, `/how-it-works/index.html`); use `200.html` for account/share routes. Do not rewrite every request to the homepage. See `deploy/nginx-static.conf`; `_redirects` supports hosts using Netlify-style SPA fallbacks.
 3. Proxy `/api` to Django or configure the absolute API base and backend CORS. Vite's development proxy is absent from a production build or preview server.
 4. Configure Django's public/API/web origins before printing codes. Keep old printed hostnames working when moving hosts.
 5. Serve generated QR images publicly; keep uploaded originals behind the API. Configure durable backups, request-size limits, shared throttling, and malware/abuse controls as described in the Django README.
 
-This is a functional full-stack implementation, not a deployment service. Email verification/password recovery, billing, team invitations, custom domains, batch CSV creation, and malware scanning are not implemented. Scan counts include repeated requests and bots; they are not unique visitor counts. Static scans cannot be counted or revoked.
+This is a functional full-stack implementation, not a deployment service. Email verification/password recovery, team invitations, custom domains, and malware scanning are not implemented. Scan counts include repeated requests and bots; they are not unique visitor counts. Static scans cannot be counted or revoked.
 
 ## Structure
 
@@ -147,3 +147,19 @@ npm run build
 ```
 
 The suite runs at desktop and iPhone widths. It verifies device persistence, account gates, daily allowance, website exemption, signup/draft retention, files, dynamic links and accessibility. File tests use a guarded local fixture command to provide Pro entitlement; that command rejects production settings and non-test accounts. Provider verification, checkout and lifecycle events are tested in Django with mocked provider APIs; complete real Stripe/Apple/Google sandbox checks after configuring those accounts.
+
+## QR design, batch generation and public guides
+
+`src/DesignControls.tsx` is shared by the individual studio and `/batch`. Logos and captions are Pro-only and validated by the server; the UI starts with a matching icon and offers sanitized image upload. A smaller Generate button applies changes without scrolling back to the main action. All content types are visible on phones, and optional colors/resolution and workspace settings expand separately.
+
+`/batch` offers public CSV/Excel samples, Pro spreadsheet preview, design settings, queued generation, progress, cancellation and private ZIP download/deletion. Signup/login from the batch page return to `/batch`. The backend worker must run separately; see [the batch deployment guide](../django/QR_DESIGN_AND_BATCHES.md). `/how-it-works` explains every supported type, design option, batch format, plan and workspace capability.
+
+## Search and sharing
+
+Set `VITE_SITE_URL` to the canonical HTTPS origin (for example `https://qrfactory.net`). The production build fails if this is missing or is a localhost/non-HTTPS origin. Build-time React rendering writes real public HTML for `/`, `/create`, `/pricing`, `/batch`, and `/how-it-works`; no API credentials or live prices are embedded during the build. The client then starts the interactive app and retrieves current plans/allowances.
+
+Each public page has its own title, description, canonical, Open Graph/Twitter card and WebApplication/WebSite/breadcrumb structured data. The build emits `sitemap.xml`, `robots.txt` and a `200.html` noindex shell for account/shared-content routes. The sitemap contains only canonical public routes, not query parameters or private/user content. `public/social.png` is the shared social preview; its reproducible browser-based generator is `scripts/generate-social.mjs`.
+
+Serve the prerendered files before the SPA fallback. Verify a direct request to `/how-it-works` returns its guide text/title without JavaScript, and `/share/...` returns the noindex shell. Configure HTTPS and a single www/non-www canonical host at your edge, submit the sitemap in Search Console, and keep page copy accurate as the product changes. Search visibility and indexing speed are controlled by search engines; metadata does not guarantee a ranking.
+
+The end-to-end suite includes desktop/mobile tests for Pro design uploads/downloads, real batch processing, public guides, signup return paths, accessibility and layout. The worker tests use `core.test_settings`; never point them at production. Production HTML/sitemap checks run automatically at the end of `npm run build`.

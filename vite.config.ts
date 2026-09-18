@@ -6,6 +6,10 @@ export default defineConfig(({ mode }) => {
   const target = env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000'
   return {
     plugins: [react()],
+    ssr: {
+      noExternal: true,
+      external: ['react', 'react-dom', 'react-dom/server', 'react-router-dom'],
+    },
     server: {
       port: Number(env.VITE_DEV_PORT || 5173),
       strictPort: true,

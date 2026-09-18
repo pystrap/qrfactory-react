@@ -56,7 +56,7 @@ test('guest generation, PNG/SVG downloads, and responsive landing', async ({ pag
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy()
   await page.getByLabel('Your website link').fill('https://example.com/my-first-qr')
-  await page.getByRole('button', { name: 'Generate QR code', exact: true }).click()
+  await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Ready for the real world.' })).toBeVisible()
   await expect(page.getByAltText('Your generated QR code')).toHaveAttribute(
     'src',
@@ -72,7 +72,7 @@ test('guest generation, PNG/SVG downloads, and responsive landing', async ({ pag
   await page.getByRole('button', { name: 'Wi-Fi', exact: true }).click()
   await page.getByLabel('Network name').fill('Cafe Guest')
   await page.getByLabel('Network password').fill('my-guest-wifi')
-  await page.getByRole('button', { name: 'Generate QR code', exact: true }).click()
+  await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Ready for the real world.' })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('generated.png'), fullPage: true })
   expect(errors).toEqual([])
@@ -105,7 +105,7 @@ test('guest draft signup, saved QR management, projects, files, and public shari
   try {
     await page.goto('/')
     await page.getByLabel('Your website link').fill('https://example.com/guest-draft')
-    await page.getByRole('button', { name: 'Generate QR code', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
     await page.getByRole('link', { name: 'Save with a free account' }).click()
     await page.getByLabel('Your name').fill('Alex Browser Test')
     await page.getByLabel('Email address').fill(email)
@@ -118,8 +118,9 @@ test('guest draft signup, saved QR management, projects, files, and public shari
     await expect(page.getByLabel('Your website link')).toHaveValue(
       'https://example.com/guest-draft',
     )
+    await page.locator('summary').filter({ hasText: 'Save & manage' }).click()
     await page.getByLabel('Name your QR').fill('Guest draft saved')
-    await page.getByRole('button', { name: 'Generate & save QR code' }).click()
+    await page.getByRole('button', { name: 'Generate QR Code' }).click()
     await expect(page.getByText('Saved in your workspace')).toBeVisible()
     await page.getByRole('link', { name: 'Saved in your workspace' }).click()
     await expect(page.getByRole('button', { name: 'Guest draft saved', exact: true })).toBeVisible()
@@ -139,10 +140,11 @@ test('guest draft signup, saved QR management, projects, files, and public shari
     await expect(page.getByRole('heading', { name: 'Launch collection' })).toBeVisible()
     await page.goto('/create')
     await page.getByLabel('Your website link').fill('https://example.com/before')
+    await page.locator('summary').filter({ hasText: 'Save & manage' }).click()
     await page.getByLabel('Name your QR').fill('Dynamic launch')
     await page.getByLabel('Project', { exact: true }).selectOption({ label: 'Launch collection' })
     await page.getByLabel('Make this a dynamic QR').check()
-    await page.getByRole('button', { name: 'Generate & save QR code' }).click()
+    await page.getByRole('button', { name: 'Generate QR Code' }).click()
     await page.getByRole('link', { name: 'Saved in your workspace' }).click()
     await page.getByRole('button', { name: 'Dynamic launch', exact: true }).click()
     await page.getByLabel('Website destination').fill('https://example.com/after')
@@ -167,8 +169,9 @@ test('guest draft signup, saved QR management, projects, files, and public shari
       buffer: Buffer.from('%PDF-1.7\nBrowser test document'),
     })
     await expect(page.getByLabel('Or use a file from your library')).toHaveValue(/\d+/)
+    await page.locator('summary').filter({ hasText: 'Save & manage' }).click()
     await page.getByLabel('Name your QR').fill('Launch document')
-    await page.getByRole('button', { name: 'Generate & save QR code' }).click()
+    await page.getByRole('button', { name: 'Generate QR Code' }).click()
     await page.getByRole('link', { name: 'Saved in your workspace' }).click()
     await expect(page.getByRole('button', { name: 'Launch document', exact: true })).toBeVisible()
     const codesResponse = await request.get('/api/qr-codes', {

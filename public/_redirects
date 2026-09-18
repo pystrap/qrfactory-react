@@ -1,0 +1,2 @@
+# Hosts supporting Netlify-style redirects: existing prerendered files take precedence.
+/* /200.html 200

@@ -178,17 +178,18 @@ export default function Pricing() {
               <Check /> File uploads & media QR codes
             </li>
             <li>
-              <Check /> Replace a file, keep the same printed QR
+              <Check /> Center icons & custom logo uploads
             </li>
             <li>
-              <Check /> High resolution PNG & scalable SVG
+              <Check /> Bottom text in your colors & style
             </li>
             <li>
-              <Check /> Dynamic links, projects & scan insights
+              <Check /> Batch QR codes from CSV & Excel
             </li>
           </ul>
           <p className="plan-note">
-            Unlimited QR generations. File size and total storage limits still apply.
+            Unlimited QR generations, with PNG & SVG downloads. File size, storage and batch job
+            limits still apply.
           </p>
           {!catalog && !error && <Loading />}
           {catalog && (!catalog.checkout_available || catalog.plans.length === 0) && (

@@ -15,7 +15,7 @@ test('guest account gates, persistent device allowance, and Pro discovery', asyn
   const token = await page.evaluate(() => localStorage.getItem('qrfactory.device'))
   expect(token).toBeTruthy()
   await page.getByLabel('Your website link').fill('https://example.com/one')
-  await page.getByRole('button', { name: 'Generate QR code', exact: true }).click()
+  await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click()
   await expect(page.getByText('19 of 20 device generations left')).toBeVisible()
   for (const format of ['PNG', 'SVG']) {
     const download = page.waitForEvent('download')
@@ -77,7 +77,7 @@ test('free combined daily limit, website exception, Pro upgrade and file unlock'
   await page.screenshot({ path: info.outputPath('daily-limit.png'), fullPage: true })
   await page.getByRole('button', { name: 'Website', exact: true }).click()
   await page.getByLabel('Your website link').fill('https://example.com/still-free')
-  await page.getByRole('button', { name: 'Generate & save QR code' }).click()
+  await page.getByRole('button', { name: 'Generate QR Code' }).click()
   await expect(page.getByText('Saved in your workspace')).toBeVisible()
   grantPro(session.user.id)
   await page.goto('/create?type=media')

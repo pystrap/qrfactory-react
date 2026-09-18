@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
+  Layers,
+  QrCode,
   ArrowRight,
   ArrowUpRight,
   Check,
@@ -138,13 +140,47 @@ export default function Home() {
           ))}
         </div>
       </section>
+      <section className="batch-showcase container-xl">
+        <div>
+          <span className="pill">
+            <Layers size={15} /> A LITTLE LESS REPETITION <span className="pro-label">Pro</span>
+          </span>
+          <h2>
+            One spreadsheet.
+            <br />
+            Thousands of connections.
+          </h2>
+          <p>
+            Upload a CSV or Excel sheet. Add your colors, logo and a little message. Get a QR code
+            beside every row, plus individual images ready to share.
+          </p>
+          <Link className="btn btn-dark" to="/batch">
+            Meet batch generation <ArrowRight size={17} />
+          </Link>
+        </div>
+        <div className="batch-showcase-art" aria-hidden="true">
+          {[
+            'Your summer collection',
+            'Every location. One upload.',
+            'A contact for every connection',
+          ].map((text) => (
+            <div key={text}>
+              <Check size={16} />
+              <span>{text}</span>
+              <QrCode size={34} />
+            </div>
+          ))}
+        </div>
+      </section>
       <section className="how-section container-xl">
         <div className="section-heading">
           <div>
             <span className="eyebrow">FROM IDEA TO OUT THERE</span>
             <h2>Three steps. Zero overthinking.</h2>
           </div>
-          <span className="hand-note">Yes, it really is that easy. ↙</span>
+          <Link className="hand-note" to="/how-it-works">
+            See how it works ↗
+          </Link>
         </div>
         <div className="steps-grid">
           {[

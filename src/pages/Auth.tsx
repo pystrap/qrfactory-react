@@ -12,12 +12,12 @@ export default function Auth({ mode }: { mode: 'login' | 'register' }) {
   const { user, notify } = useApp()
   const navigate = useNavigate()
   const [search] = useSearchParams()
-  const destination =
-    search.get('next') === '/pricing'
-      ? '/pricing'
-      : sessionStorage.getItem('qrfactory.draft')
-        ? '/create'
-        : '/library'
+  const next = ['/pricing', '/batch'].includes(search.get('next') || '') ? search.get('next')! : ''
+  const destination = next
+    ? next
+    : sessionStorage.getItem('qrfactory.draft')
+      ? '/create'
+      : '/library'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [visible, setVisible] = useState(false)
@@ -139,7 +139,7 @@ export default function Auth({ mode }: { mode: 'login' | 'register' }) {
           {signup ? 'Already have an account?' : 'New to QRFactory?'}{' '}
           <Link
             onClick={() => setError('')}
-            to={`${signup ? '/login' : '/register'}${search.get('next') === '/pricing' ? '?next=%2Fpricing' : ''}`}
+            to={`${signup ? '/login' : '/register'}${next ? `?next=${encodeURIComponent(next)}` : ''}`}
           >
             {signup ? 'Log in' : 'Create an account'}
           </Link>

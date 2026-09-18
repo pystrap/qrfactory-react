@@ -4,6 +4,8 @@ import { Header, Footer, SignInPrompt, Workspace } from './components'
 import { useApp } from './context'
 import Home from './pages/Home'
 import Pricing from './pages/Pricing'
+import Batch from './pages/Batch'
+import HowItWorks from './pages/HowItWorks'
 import Generator from './pages/Generator'
 import Auth from './pages/Auth'
 import Library from './pages/Library'
@@ -12,6 +14,7 @@ import Projects from './pages/Projects'
 import Account from './pages/Account'
 import SharedContent from './pages/SharedContent'
 import type { ReactNode } from 'react'
+import { updateMetadata } from './seo'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user } = useApp()
@@ -22,25 +25,7 @@ export default function App() {
   useEffect(() => {
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView()
     else window.scrollTo(0, 0)
-    const titles: Record<string, string> = {
-      '/': 'Make something worth scanning.',
-      '/create': 'QR studio',
-      '/pricing': 'Meet Pro',
-      '/library': 'My QR codes',
-      '/files': 'File library',
-      '/projects': 'Projects',
-      '/account': 'My account',
-      '/login': 'Welcome back',
-      '/register': 'Create your account',
-    }
-    document.title = `${titles[location.pathname] || 'Shared with you'} — QRFactory`
-    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
-    if (!canonical) {
-      canonical = document.createElement('link')
-      canonical.rel = 'canonical'
-      document.head.appendChild(canonical)
-    }
-    canonical.href = `${(import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/$/, '')}${location.pathname}`
+    updateMetadata(location.pathname)
   }, [location.pathname, location.hash])
   return (
     <>
@@ -66,6 +51,8 @@ export default function App() {
           }
         />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/batch" element={<Batch />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/login" element={<Auth mode="login" />} />
         <Route path="/register" element={<Auth mode="register" />} />
         <Route

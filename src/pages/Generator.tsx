@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Check,
   CheckCheck,
-  ChevronDown,
   Copy,
   FileUp,
   Globe,
@@ -13,9 +12,7 @@ import {
   Mail,
   MapPin,
   MessageSquare,
-  Palette,
   Phone,
-  QrCode,
   ShieldCheck,
   Sparkles,
   Type,
@@ -28,6 +25,7 @@ import Button from 'react-bootstrap/Button'
 import { api, ApiError, API_BASE, download } from '../api'
 import { useApp } from '../context'
 import { UpgradeCard, UsageBanner } from '../billing'
+import DesignControls, { type QRDesign } from '../DesignControls'
 import { bytes, ErrorNotice } from '../components'
 import type { Asset, Page, Preview, Project, QR, Usage } from '../types'
 
@@ -120,6 +118,7 @@ export const contentTypes: { value: string; label: string; icon: LucideIcon; fie
   },
 ]
 type Draft = {
+  design?: QRDesign
   payload_type: string
   payload: Record<string, string | boolean>
   title: string
@@ -297,7 +296,7 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
             {value === 'media' ? (
               <small className="type-badge">Pro</small>
             ) : !user && !['url', 'text', 'wifi'].includes(value) ? (
-              <small className="type-badge">Account</small>
+              <small className="type-badge">Sign in</small>
             ) : null}
           </button>
         ))}
@@ -458,122 +457,6 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
                   </small>
                 </div>
               ))}
-            <details className="style-details">
-              <summary>
-                <span>
-                  <Palette size={17} /> Make it yours <small>Colors & options</small>
-                </span>
-                <ChevronDown size={16} />
-              </summary>
-              <div className="style-options">
-                <div className="color-presets">
-                  <span>Quick styles</span>
-                  {[
-                    { name: 'Original', ink: '#1b2235', paper: '#ffffff' },
-                    { name: 'Violet', ink: '#5636bc', paper: '#faf7ff' },
-                    { name: 'Forest', ink: '#155b43', paper: '#f1fcf5' },
-                    { name: 'Terracotta', ink: '#813a2c', paper: '#fff8f1' },
-                  ].map((style) => (
-                    <button
-                      type="button"
-                      key={style.name}
-                      title={style.name}
-                      aria-label={`${style.name} style`}
-                      className={draft.fill_color === style.ink ? 'active' : ''}
-                      style={{ background: style.paper, color: style.ink }}
-                      onClick={() => update({ fill_color: style.ink, back_color: style.paper })}
-                    >
-                      <QrCode size={24} />
-                    </button>
-                  ))}
-                </div>
-                <div className="row g-3">
-                  <Form.Group className="col-6" controlId="foreground">
-                    <Form.Label>Code color</Form.Label>
-                    <Form.Control
-                      type="color"
-                      value={draft.fill_color}
-                      onChange={(e) => update({ fill_color: e.target.value })}
-                    />
-                  </Form.Group>
-                  <Form.Group className="col-6" controlId="background">
-                    <Form.Label>Background</Form.Label>
-                    <Form.Control
-                      type="color"
-                      value={draft.back_color}
-                      onChange={(e) => update({ back_color: e.target.value })}
-                    />
-                  </Form.Group>
-                  <Form.Group className="col-6" controlId="qr-size">
-                    <Form.Label>Resolution</Form.Label>
-                    <Form.Select
-                      value={draft.box_size}
-                      onChange={(e) => update({ box_size: Number(e.target.value) })}
-                    >
-                      <option value={10}>Standard</option>
-                      <option value={20}>High resolution</option>
-                    </Form.Select>
-                  </Form.Group>
-                  <Form.Group className="col-6" controlId="qr-correction">
-                    <Form.Label>Error correction</Form.Label>
-                    <Form.Select
-                      value={draft.error_correction}
-                      onChange={(e) => update({ error_correction: e.target.value })}
-                    >
-                      <option value="M">Balanced · M</option>
-                      <option value="Q">Extra resilient · Q</option>
-                      <option value="H">Most resilient · H</option>
-                    </Form.Select>
-                  </Form.Group>
-                </div>
-                <small>Keep strong contrast and test a scan before printing.</small>
-              </div>
-            </details>
-            {user && (
-              <div className="save-options">
-                <Form.Group controlId="qr-title">
-                  <Form.Label>
-                    Name your QR <span className="optional">optional</span>
-                  </Form.Label>
-                  <Form.Control
-                    value={draft.title}
-                    maxLength={255}
-                    placeholder="Something memorable"
-                    onChange={(e) => update({ title: e.target.value })}
-                  />
-                </Form.Group>
-                {projects.length > 0 && (
-                  <Form.Group controlId="qr-project">
-                    <Form.Label>Project</Form.Label>
-                    <Form.Select
-                      value={draft.project_id || ''}
-                      onChange={(e) =>
-                        update({ project_id: e.target.value ? Number(e.target.value) : null })
-                      }
-                    >
-                      <option value="">No project</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                )}
-                {type.value === 'url' && (
-                  <div className="dynamic-option">
-                    <Form.Check
-                      type="switch"
-                      id="dynamic-toggle"
-                      label="Make this a dynamic QR"
-                      checked={draft.is_dynamic}
-                      onChange={(e) => update({ is_dynamic: e.target.checked })}
-                    />
-                    <small>Change the destination later, pause sharing, and track scans.</small>
-                  </div>
-                )}
-              </div>
-            )}
           </fieldset>
           <ErrorNotice error={error} />
           {!blocked && (
@@ -590,10 +473,88 @@ export default function Generator({ compact = false }: { compact?: boolean }) {
                 </>
               ) : (
                 <>
-                  {user ? 'Generate & save QR code' : 'Generate QR code'} <ArrowRight size={19} />
+                  Generate QR Code <ArrowRight size={19} />
                 </>
               )}
             </Button>
+          )}
+          <p className="generate-hint">
+            {user
+              ? 'Your QR is automatically saved to your workspace.'
+              : 'Download your QR right away. No account needed for website, text and Wi-Fi.'}
+          </p>
+          <fieldset disabled={busy || uploadBusy}>
+            <DesignControls
+              value={draft}
+              onChange={update}
+              payloadType={type.value}
+              onContinue={remember}
+              onBusyChange={setUploadBusy}
+            />
+            {user && (
+              <details className="save-details">
+                <summary>
+                  Save & manage <span className="optional">optional</span>
+                </summary>
+                <div className="save-options">
+                  <Form.Group controlId="qr-title">
+                    <Form.Label>
+                      Name your QR <span className="optional">optional</span>
+                    </Form.Label>
+                    <Form.Control
+                      value={draft.title}
+                      maxLength={255}
+                      placeholder="Something memorable"
+                      onChange={(e) => update({ title: e.target.value })}
+                    />
+                  </Form.Group>
+                  {projects.length > 0 && (
+                    <Form.Group controlId="qr-project">
+                      <Form.Label>Project</Form.Label>
+                      <Form.Select
+                        value={draft.project_id || ''}
+                        onChange={(e) =>
+                          update({ project_id: e.target.value ? Number(e.target.value) : null })
+                        }
+                      >
+                        <option value="">No project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  )}
+                  {type.value === 'url' && (
+                    <div className="dynamic-option">
+                      <Form.Check
+                        type="switch"
+                        id="dynamic-toggle"
+                        label="Make this a dynamic QR"
+                        checked={draft.is_dynamic}
+                        onChange={(e) => update({ is_dynamic: e.target.checked })}
+                      />
+                      <small>Change the destination later, pause sharing, and track scans.</small>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+          </fieldset>
+          {!blocked && (
+            <div className="generate-again">
+              <span>Happy with your design?</span>
+              <Button
+                type="submit"
+                variant="dark"
+                disabled={
+                  busy || uploadBusy || !entitlements || (type.value === 'media' && !draft.media_id)
+                }
+              >
+                {busy ? 'Generating…' : 'Generate'} <ArrowRight size={16} />
+              </Button>
+            </div>
           )}
           <div className="generator-fineprint">
             <Check size={13} />{' '}

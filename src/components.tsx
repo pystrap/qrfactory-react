@@ -48,8 +48,10 @@ export function Header() {
         <Logo />
         <nav className={`header-links ${open ? 'is-open' : ''}`} aria-label="Main navigation">
           <Link to="/create">QR generator</Link>
-          <a href="/#possibilities">What can I create?</a>
-          <Link to="/library">My QR codes</Link>
+          <Link to="/how-it-works">How it works</Link>
+          <Link to="/batch">
+            Batch QR <span className="pro-label">Pro</span>
+          </Link>
           <Link to="/pricing">Plans & Pro</Link>
         </nav>
         <div className="header-actions">
@@ -84,7 +86,11 @@ export function Footer() {
   return (
     <footer className="site-footer container-xl">
       <Logo />
-      <p>A little code. A world of possibilities.</p>
+      <nav className="footer-links" aria-label="Footer navigation">
+        <Link to="/how-it-works">How it works</Link>
+        <Link to="/batch">Batch QR codes</Link>
+        <Link to="/pricing">Plans & Pro</Link>
+      </nav>
       <span>Made for your next big thing. © {new Date().getFullYear()}</span>
     </footer>
   )
@@ -92,6 +98,7 @@ export function Footer() {
 const workspaceLinks = [
   { to: '/library', icon: LayoutGrid, text: 'My QR codes' },
   { to: '/files', icon: Files, text: 'File library' },
+  { to: '/batch', icon: LayoutGrid, text: 'Batch QR · Pro' },
   { to: '/projects', icon: FolderOpen, text: 'Projects' },
   { to: '/pricing', icon: Sparkles, text: 'Plans & billing' },
   { to: '/account', icon: UserRound, text: 'My account' },
